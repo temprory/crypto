@@ -1,9 +1,11 @@
 package crypto
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 )
@@ -58,4 +60,28 @@ func RsaDecrypt(privateKey []byte, ciphertext []byte) ([]byte, error) {
 		return nil, err
 	}
 	return rsa.DecryptPKCS1v15(rand.Reader, priv, ciphertext)
+}
+
+func RsaVerify(publicKey []byte, data []byte, sign string) error {
+	block, _ := pem.Decode(publicKey)
+	if block == nil {
+		return errors.New("public key error")
+	}
+	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return err
+	}
+	pubKey := pubInterface.(*rsa.PublicKey)
+
+	rsalgorithmSign := crypto.MD5
+	h := rsalgorithmSign.New()
+	h.Write(data)
+	hashed := h.Sum(nil)
+
+	decodedSign, err := base64.StdEncoding.DecodeString(sign)
+	if err != nil {
+		return err
+	}
+
+	return rsa.VerifyPKCS1v15(pubKey, rsalgorithmSign, hashed, decodedSign)
 }
